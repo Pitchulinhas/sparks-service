@@ -11,15 +11,18 @@ import com.google.gson.Gson;
 import com.sparks.service.entities.User;
 import com.sparks.service.mappers.UserMapper;
 import com.sparks.service.repositories.UserRepository;
+import com.sparks.service.responses.ServiceResponse;
 import com.sparks.utils.StringUtils;
 
 @Component
 public class UserConsumer {
-	private Gson gson;
 	@Autowired
 	private UserMapper mapper;
+
 	@Autowired
 	private UserRepository repository;
+
+	private Gson gson;
 
 	public UserConsumer() {
 		this.gson = new Gson();
@@ -27,68 +30,115 @@ public class UserConsumer {
 
 	@KafkaListener(id = "${spring.kafka.topics.user.create}", topics = "${spring.kafka.topics.user.create}")
 	@SendTo
-	public String create(String userAsString) {
-		userAsString = StringUtils.trimText(userAsString, "\"");
+	public String create(String createUserInputAsJson) {
+		ServiceResponse<User> response = new ServiceResponse<>();
 
-		userAsString = StringUtils.removeBackSlash(userAsString);
+		try {
+			createUserInputAsJson = StringUtils.trimText(createUserInputAsJson, "\"");
 
-		User user = new Gson().fromJson(userAsString, User.class);
+			createUserInputAsJson = StringUtils.removeBackSlash(createUserInputAsJson);
 
-		User userCreated = this.repository.insert(user);
+			User createUserInput = new Gson().fromJson(createUserInputAsJson, User.class);
 
-		return gson.toJson(userCreated);
+			User userCreated = this.repository.insert(createUserInput);
+
+			response.setData(userCreated);
+		} catch (Exception ex) {
+			if (ex.getMessage().contains("email dup key")) {
+				response.setErrorMessage("Já existe um usuário com esse e-mail");
+			} else {
+				response.setErrorMessage(ex.getMessage());
+			}
+		}
+
+		return gson.toJson(response);
 	}
 
 	@KafkaListener(id = "${spring.kafka.topics.user.find-all}", topics = "${spring.kafka.topics.user.find-all}")
 	@SendTo
 	public String findAll(String in) {
-		List<User> users = this.repository.findAll();
+		ServiceResponse<List<User>> response = new ServiceResponse<>();
 
-		return gson.toJson(users);
+		try {
+			List<User> usersFound = this.repository.findAll();
+
+			response.setData(usersFound);
+		} catch (Exception ex) {
+			response.setErrorMessage(ex.getMessage());
+		}
+
+		return gson.toJson(response);
 	}
 
 	@KafkaListener(id = "${spring.kafka.topics.user.find-by-id}", topics = "${spring.kafka.topics.user.find-by-id}")
 	@SendTo
 	public String findById(String id) {
-		id = StringUtils.trimText(id, "\"");
+		ServiceResponse<User> response = new ServiceResponse<>();
 
-		User userFound = this.repository.findById(id).orElse(null);
+		try {
+			id = StringUtils.trimText(id, "\"");
 
-		return gson.toJson(userFound);
+			User userFound = this.repository.findById(id).orElse(null);
+
+			response.setData(userFound);
+		} catch (Exception ex) {
+			response.setErrorMessage(ex.getMessage());
+		}
+
+		return gson.toJson(response);
 	}
 
 	@KafkaListener(id = "${spring.kafka.topics.user.update-by-id}", topics = "${spring.kafka.topics.user.update-by-id}")
 	@SendTo
-	public String updateById(String userAsString) {
-		userAsString = StringUtils.trimText(userAsString, "\"");
+	public String updateById(String updateUserInputAsJson) {
+		ServiceResponse<User> response = new ServiceResponse<>();
 
-		userAsString = StringUtils.removeBackSlash(userAsString);
+		try {
+			updateUserInputAsJson = StringUtils.trimText(updateUserInputAsJson, "\"");
 
-		User newUser = new Gson().fromJson(userAsString, User.class);
-		User user = this.repository.findById(newUser.getId()).orElse(null);
+			updateUserInputAsJson = StringUtils.removeBackSlash(updateUserInputAsJson);
 
-		User userUpdated = null;
-		
-		if (user != null) {
-			this.mapper.updateUser(newUser, user);
+			User updateUserInput = new Gson().fromJson(updateUserInputAsJson, User.class);
 
-			userUpdated = this.repository.save(user);
+			User userFound = this.repository.findById(updateUserInput.getId()).orElse(null);
+
+			if (userFound != null) {
+				this.mapper.updateUser(updateUserInput, userFound);
+
+				User userUpdated = this.repository.save(userFound);
+
+				response.setData(userUpdated);
+			}
+		} catch (Exception ex) {
+			if (ex.getMessage().contains("email dup key")) {
+				response.setErrorMessage("Já existe um usuário com esse e-mail");
+			} else {
+				response.setErrorMessage(ex.getMessage());
+			}
 		}
 
-		return gson.toJson(userUpdated);
+		return gson.toJson(response);
 	}
-	
+
 	@KafkaListener(id = "${spring.kafka.topics.user.delete-by-id}", topics = "${spring.kafka.topics.user.delete-by-id}")
 	@SendTo
 	public String deleteById(String id) {
-		id = StringUtils.trimText(id, "\"");
+		ServiceResponse<User> response = new ServiceResponse<>();
 
-		User userFound = this.repository.findById(id).orElse(null);
-		
-		if (userFound != null) {
-			this.repository.deleteById(id);
+		try {
+			id = StringUtils.trimText(id, "\"");
+
+			User userFound = this.repository.findById(id).orElse(null);
+
+			if (userFound != null) {
+				this.repository.deleteById(id);
+
+				response.setData(userFound);
+			}
+		} catch (Exception ex) {
+			response.setErrorMessage(ex.getMessage());
 		}
 
-		return gson.toJson(userFound);
+		return gson.toJson(response);
 	}
 }

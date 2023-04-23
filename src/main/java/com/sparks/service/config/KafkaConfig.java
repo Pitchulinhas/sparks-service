@@ -47,8 +47,23 @@ public class KafkaConfig {
 	@Value("${spring.kafka.reply-topics.user.delete-by-id}")
 	private String deleteUserByIdReplyTopic;
 
-    @Bean
-    Map<String, Object> producerConfigs() {
+	@Value("${spring.kafka.reply-topics.product.create}")
+	private String createProductReplyTopic;
+
+	@Value("${spring.kafka.reply-topics.product.find-all}")
+	private String findAllProductsReplyTopic;
+
+	@Value("${spring.kafka.reply-topics.product.find-by-id}")
+	private String findProductByIdReplyTopic;
+
+	@Value("${spring.kafka.reply-topics.product.update-by-id}")
+	private String updateProductByIdReplyTopic;
+
+	@Value("${spring.kafka.reply-topics.product.delete-by-id}")
+	private String deleteProductByIdReplyTopic;
+
+	@Bean
+	Map<String, Object> producerConfigs() {
 		Map<String, Object> props = new HashMap<>();
 
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -58,8 +73,8 @@ public class KafkaConfig {
 		return props;
 	}
 
-    @Bean
-    Map<String, Object> consumerConfigs() {
+	@Bean
+	Map<String, Object> consumerConfigs() {
 		Map<String, Object> props = new HashMap<>();
 
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -68,19 +83,19 @@ public class KafkaConfig {
 		return props;
 	}
 
-    @Bean
-    ProducerFactory<String, String> producerFactory() {
+	@Bean
+	ProducerFactory<String, String> producerFactory() {
 		return new DefaultKafkaProducerFactory<>(producerConfigs());
 	}
 
-    @Bean
-    KafkaTemplate<String, String> kafkaTemplate() {
+	@Bean
+	KafkaTemplate<String, String> kafkaTemplate() {
 		return new KafkaTemplate<>(producerFactory());
 	}
 
-    @Bean
-    ReplyingKafkaTemplate<String, String, String> replyKafkaTemplate(ProducerFactory<String, String> pf,
-                                                                             KafkaMessageListenerContainer<String, String> container) {
+	@Bean
+	ReplyingKafkaTemplate<String, String, String> replyKafkaTemplate(ProducerFactory<String, String> pf,
+			KafkaMessageListenerContainer<String, String> container) {
 		ReplyingKafkaTemplate<String, String, String> replyTemplate = new ReplyingKafkaTemplate<>(pf, container);
 
 		replyTemplate.setSharedReplyTopic(true);
@@ -92,20 +107,22 @@ public class KafkaConfig {
 		return replyTemplate;
 	}
 
-    @Bean
-    KafkaMessageListenerContainer<String, String> replyContainer(ConsumerFactory<String, String> cf) {
+	@Bean
+	KafkaMessageListenerContainer<String, String> replyContainer(ConsumerFactory<String, String> cf) {
 		ContainerProperties containerProperties = new ContainerProperties(createUserReplyTopic, findAllUsersReplyTopic,
-				findUserByIdReplyTopic, updateUserByIdReplyTopic, deleteUserByIdReplyTopic);
+				findUserByIdReplyTopic, updateUserByIdReplyTopic, deleteUserByIdReplyTopic, createProductReplyTopic,
+				findAllProductsReplyTopic, findProductByIdReplyTopic, updateProductByIdReplyTopic,
+				deleteProductByIdReplyTopic);
 		return new KafkaMessageListenerContainer<>(cf, containerProperties);
 	}
 
-    @Bean
-    ConsumerFactory<String, String> consumerFactory() {
+	@Bean
+	ConsumerFactory<String, String> consumerFactory() {
 		return new DefaultKafkaConsumerFactory<>(consumerConfigs(), new StringDeserializer(), new StringDeserializer());
 	}
 
-    @Bean
-    KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> kafkaListenerContainerFactory() {
+	@Bean
+	KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> kafkaListenerContainerFactory() {
 		ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 		factory.setConsumerFactory(consumerFactory());
 		factory.setReplyTemplate(kafkaTemplate());

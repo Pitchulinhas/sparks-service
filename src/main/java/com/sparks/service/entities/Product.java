@@ -7,16 +7,15 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.Data;
 
 @Data
-@Document("users")
-public class User {
+@Document("products")
+public class Product {
 	@Id
 	private String id;
 	
 	@Indexed(unique = true)
-	private String email;
-
 	private String name;
-	private String password;
-	private String phone;
-	private String cpf;
+	
+	private Float price;
+	private String picture;
+	private Integer available;
 }
