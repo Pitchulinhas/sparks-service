@@ -12,10 +12,12 @@ public class Product {
 	@Id
 	private String id;
 	
-	@Indexed(unique = true)
 	private String name;
+
+	@Indexed(unique = true)
+	private String barCode;
 	
-	private Float price;
+	private Double price;
 	private String picture;
 	private Integer available;
 }
