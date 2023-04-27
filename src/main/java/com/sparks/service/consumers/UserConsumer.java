@@ -9,18 +9,14 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
 import com.sparks.service.entities.User;
-import com.sparks.service.mappers.UserMapper;
-import com.sparks.service.repositories.UserRepository;
 import com.sparks.service.responses.ServiceResponse;
+import com.sparks.service.services.UserService;
 import com.sparks.utils.StringUtils;
 
 @Component
 public class UserConsumer {
 	@Autowired
-	private UserMapper mapper;
-
-	@Autowired
-	private UserRepository repository;
+	private UserService userService;
 
 	private Gson gson;
 
@@ -30,7 +26,7 @@ public class UserConsumer {
 
 	@KafkaListener(id = "${spring.kafka.topics.user.create}", topics = "${spring.kafka.topics.user.create}")
 	@SendTo
-	public String create(String createUserInputAsJson) {
+	public String createUser(String createUserInputAsJson) {
 		ServiceResponse<User> response = new ServiceResponse<>();
 
 		try {
@@ -40,7 +36,7 @@ public class UserConsumer {
 
 			User createUserInput = new Gson().fromJson(createUserInputAsJson, User.class);
 
-			User userCreated = this.repository.insert(createUserInput);
+			User userCreated = this.userService.createUser(createUserInput);
 
 			response.setData(userCreated);
 		} catch (Exception ex) {
@@ -56,11 +52,11 @@ public class UserConsumer {
 
 	@KafkaListener(id = "${spring.kafka.topics.user.find-all}", topics = "${spring.kafka.topics.user.find-all}")
 	@SendTo
-	public String findAll(String in) {
+	public String findAllUsers(String in) {
 		ServiceResponse<List<User>> response = new ServiceResponse<>();
 
 		try {
-			List<User> usersFound = this.repository.findAll();
+			List<User> usersFound = this.userService.findAllUsers();
 
 			response.setData(usersFound);
 		} catch (Exception ex) {
@@ -72,13 +68,13 @@ public class UserConsumer {
 
 	@KafkaListener(id = "${spring.kafka.topics.user.find-by-id}", topics = "${spring.kafka.topics.user.find-by-id}")
 	@SendTo
-	public String findById(String id) {
+	public String findUserById(String id) {
 		ServiceResponse<User> response = new ServiceResponse<>();
 
 		try {
 			id = StringUtils.trimText(id, "\"");
 
-			User userFound = this.repository.findById(id).orElse(null);
+			User userFound = this.userService.findUserById(id);
 
 			response.setData(userFound);
 		} catch (Exception ex) {
@@ -90,7 +86,7 @@ public class UserConsumer {
 
 	@KafkaListener(id = "${spring.kafka.topics.user.update-by-id}", topics = "${spring.kafka.topics.user.update-by-id}")
 	@SendTo
-	public String updateById(String updateUserInputAsJson) {
+	public String updateUserById(String updateUserInputAsJson) {
 		ServiceResponse<User> response = new ServiceResponse<>();
 
 		try {
@@ -100,15 +96,9 @@ public class UserConsumer {
 
 			User updateUserInput = new Gson().fromJson(updateUserInputAsJson, User.class);
 
-			User userFound = this.repository.findById(updateUserInput.getId()).orElse(null);
+			User userUpdated = this.userService.updateUserById(updateUserInput);
 
-			if (userFound != null) {
-				this.mapper.updateUser(updateUserInput, userFound);
-
-				User userUpdated = this.repository.save(userFound);
-
-				response.setData(userUpdated);
-			}
+			response.setData(userUpdated);
 		} catch (Exception ex) {
 			if (ex.getMessage().contains("email dup key")) {
 				response.setErrorMessage("Já existe um usuário com esse e-mail");
@@ -128,13 +118,9 @@ public class UserConsumer {
 		try {
 			id = StringUtils.trimText(id, "\"");
 
-			User userFound = this.repository.findById(id).orElse(null);
+			User userDeleted = this.userService.deleteUserById(id);
 
-			if (userFound != null) {
-				this.repository.deleteById(id);
-
-				response.setData(userFound);
-			}
+			response.setData(userDeleted);
 		} catch (Exception ex) {
 			response.setErrorMessage(ex.getMessage());
 		}
