@@ -9,18 +9,14 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
 import com.sparks.service.entities.Product;
-import com.sparks.service.mappers.ProductMapper;
-import com.sparks.service.repositories.ProductRepository;
 import com.sparks.service.responses.ServiceResponse;
+import com.sparks.service.services.ProductService;
 import com.sparks.utils.StringUtils;
 
 @Component
 public class ProductConsumer {
 	@Autowired
-	private ProductMapper mapper;
-
-	@Autowired
-	private ProductRepository repository;
+	private ProductService productService;
 
 	private Gson gson;
 
@@ -40,12 +36,12 @@ public class ProductConsumer {
 
 			Product createProductInput = new Gson().fromJson(createProductInputAsJson, Product.class);
 
-			Product productCreated = this.repository.insert(createProductInput);
+			Product productCreated = this.productService.createProduct(createProductInput);
 
 			response.setData(productCreated);
 		} catch (Exception ex) {
-			if (ex.getMessage().contains("name dup key")) {
-				response.setErrorMessage("Já existe um produto com esse nome");
+			if (ex.getMessage().contains("barCode dup key")) {
+				response.setErrorMessage("Já existe um produto com esse código de barras");
 			} else {
 				response.setErrorMessage(ex.getMessage());
 			}
@@ -60,7 +56,7 @@ public class ProductConsumer {
 		ServiceResponse<List<Product>> response = new ServiceResponse<>();
 
 		try {
-			List<Product> productsFound = this.repository.findAll();
+			List<Product> productsFound = this.productService.findAllProducts();
 
 			response.setData(productsFound);
 		} catch (Exception ex) {
@@ -78,7 +74,7 @@ public class ProductConsumer {
 		try {
 			id = StringUtils.trimText(id, "\"");
 
-			Product productFound = this.repository.findById(id).orElse(null);
+			Product productFound = this.productService.findProductById(id);
 
 			response.setData(productFound);
 		} catch (Exception ex) {
@@ -100,18 +96,12 @@ public class ProductConsumer {
 
 			Product updateProductInput = new Gson().fromJson(updateProductInputAsJson, Product.class);
 
-			Product productFound = this.repository.findById(updateProductInput.getId()).orElse(null);
+			Product productUpdated = this.productService.updateProductById(updateProductInput);
 
-			if (productFound != null) {
-				this.mapper.updateProduct(updateProductInput, productFound);
-
-				Product productUpdated = this.repository.save(productFound);
-
-				response.setData(productUpdated);
-			}
+			response.setData(productUpdated);
 		} catch (Exception ex) {
-			if (ex.getMessage().contains("name dup key")) {
-				response.setErrorMessage("Já existe um produto com esse nome");
+			if (ex.getMessage().contains("barCode dup key")) {
+				response.setErrorMessage("Já existe um produto com esse código de barras");
 			} else {
 				response.setErrorMessage(ex.getMessage());
 			}
@@ -128,13 +118,9 @@ public class ProductConsumer {
 		try {
 			id = StringUtils.trimText(id, "\"");
 
-			Product productFound = this.repository.findById(id).orElse(null);
+			Product productDeleted = this.productService.deleteProductById(id);
 
-			if (productFound != null) {
-				this.repository.deleteById(id);
-
-				response.setData(productFound);
-			}
+			response.setData(productDeleted);
 		} catch (Exception ex) {
 			response.setErrorMessage(ex.getMessage());
 		}
